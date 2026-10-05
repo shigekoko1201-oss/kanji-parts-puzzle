@@ -25,8 +25,8 @@
   --ng:#cf3a3a;
   --ng-soft:#fbe1e1;
   --marker:#fff07a;    /* marker */
-  --kyoka:"UD デジタル 教科書体 NP-R","UD Digital Kyokasho-tai NP-R","UD デジタル 教科書体 N-R","UD Digital Kyokasho-tai N-R","Klee One","Yu Gothic","Hiragino Sans","Noto Sans JP",sans-serif;
-  --kyoka-b:"UD デジタル 教科書体 NP-B","UD Digital Kyokasho-tai NP-B","UD デジタル 教科書体 N-B","UD Digital Kyokasho-tai N-B","Klee One","Yu Gothic","Hiragino Sans","Noto Sans JP",sans-serif;
+  --kyoka:"UD デジタル 教科書体 NP-R","UD デジタル 教科書体 NP","UD Digi Kyokasho NP-R","UD Digi Kyokasho NP","UD Digital Kyokasho-tai NP-R","UD デジタル 教科書体 N-R","UD Digital Kyokasho-tai N-R","Klee One","Yu Gothic","Hiragino Sans","Noto Sans JP",sans-serif;
+  --kyoka-b:"UD デジタル 教科書体 NP-B","UD デジタル 教科書体 NP","UD Digi Kyokasho NP-B","UD Digi Kyokasho NP","UD Digital Kyokasho-tai NP-B","UD デジタル 教科書体 N-B","UD Digital Kyokasho-tai N-B","Klee One","Yu Gothic","Hiragino Sans","Noto Sans JP",sans-serif;
   color-scheme:light;
 }
 *{box-sizing:border-box}
@@ -69,7 +69,8 @@ button:focus-visible{outline:4px solid var(--accent);outline-offset:3px}
 .chip[aria-pressed="true"]{background:var(--bg);font-family:var(--kyoka-b);font-weight:600;box-shadow:0 1px 3px rgba(20,30,50,.18)}
 
 /* kanji glyph with the part area colored */
-.shin{width:1em;height:1em;display:inline-block;vertical-align:-.12em}
+/* ⻌ is not in UD Digi Kyokasho; Klee One / Yu Gothic / Meiryo draw it with one dot */
+.shin{font-family:"Klee One","Yu Gothic","YuGothic","Meiryo","Hiragino Sans","Noto Sans JP",sans-serif;font-weight:400}
 .kj{position:relative;display:inline-block;line-height:1;font-family:var(--kyoka)}
 .kj .hl{position:absolute;left:0;top:0;color:var(--part);pointer-events:none}
 
@@ -337,9 +338,8 @@ function clipFor(b){
 function kj(e,show=true){
   return `<span class="kj">${e.k}${show?`<span class="hl" style="clip-path:${clipFor(e.b)};-webkit-clip-path:${clipFor(e.b)}">${e.k}</span>`:''}</span>`;
 }
-/* しんにょうは 字体によって 点が2つに なるので、点1つの形を 図で かく */
-const SHIN='<svg class="shin" viewBox="0 0 100 100" aria-label="しんにょう" role="img"><g fill="none" stroke="currentColor" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 13 L29 25"/><path d="M10 41 H33 L17 62"/><path d="M24 56 V76 Q26 88 44 88 Q70 88 95 91"/></g></svg>';
-const G = g=> g==='辶' ? SHIN : g;
+/* しんにょう：辶(U+8FB6) は 多くの フォントで 点が2つに なる。点1つの ⻌(U+2ECC) を、点1つで 入っている フォントで 出す */
+const G = g=> g==='辶' ? '<span class="shin">⻌</span>' : g;
 const partName = b=>`「${G(b.g)}」（${b.n}）`;
 
 /* おと */
