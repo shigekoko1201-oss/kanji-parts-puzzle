@@ -1,0 +1,577 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>漢字パーツパズル</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Klee+One:wght@400;600&display=swap">
+<style>
+/* layout: white paper; tabs on top, build box + piece cards below. tablet landscape first */
+:root{
+  --bg:#ffffff;        /* 白い紙 */
+  --ink:#1f2633;       /* ink */
+  --sub:#5a6375;
+  --line:#d6dbe4;
+  --card:#eceff3;      /* gray cards first */
+  --card-ink:#2b3240;
+  --part:#e2552b;      /* part position */
+  --part-soft:#fde3d8;
+  --accent:#2b5fc4;    /* えらんでいる カード */
+  --accent-soft:#dfe8fb;
+  --ok:#1f8f55;
+  --ok-soft:#dcf3e6;
+  --ng:#cf3a3a;
+  --ng-soft:#fbe1e1;
+  --marker:#fff07a;    /* marker */
+  --kyoka:"UD デジタル 教科書体 NP-R","UD Digital Kyokasho-tai NP-R","UD デジタル 教科書体 N-R","UD Digital Kyokasho-tai N-R","Klee One","Yu Gothic","Hiragino Sans","Noto Sans JP",sans-serif;
+  --kyoka-b:"UD デジタル 教科書体 NP-B","UD Digital Kyokasho-tai NP-B","UD デジタル 教科書体 N-B","UD Digital Kyokasho-tai N-B","Klee One","Yu Gothic","Hiragino Sans","Noto Sans JP",sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg);color:var(--ink)}
+body{margin:0;font-family:var(--kyoka);font-size:20px;line-height:1.6;-webkit-tap-highlight-color:transparent}
+button{font-family:inherit;font-size:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:4px solid var(--accent);outline-offset:3px}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:16px;padding-block:12px 40px}
+
+/* header */
+.top{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:8px}
+.top h1{margin:0;font-family:var(--kyoka-b);font-weight:600;font-size:clamp(26px,4vw,34px);letter-spacing:.04em}
+.mk{background:linear-gradient(transparent 58%,var(--marker) 58%)}
+.top .sp{flex:1}
+.stars{font-family:var(--kyoka-b);font-size:22px;display:flex;align-items:center;gap:6px;font-variant-numeric:tabular-nums}
+.stars svg{width:26px;height:26px}
+.snd{border:2px solid var(--line);background:var(--bg);border-radius:999px;padding:4px 16px;font-size:17px}
+.snd[aria-pressed="false"]{color:var(--sub)}
+
+/* タブ */
+.tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-block:8px 18px}
+.tab{border:3px solid var(--line);background:var(--bg);border-radius:14px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.3}
+.tab b{font-family:var(--kyoka-b);font-size:21px;font-weight:600}
+.tab small{font-size:14px;color:var(--sub)}
+.tab[aria-selected="true"]{border-color:var(--ink);background:var(--ink);color:var(--bg)}
+.tab[aria-selected="true"] small{color:#cfd5e0}
+@media (max-width:620px){.tabs{grid-template-columns:repeat(2,minmax(0,1fr))}.tab small{display:none}}
+
+.lead{font-size:22px;margin:0 0 12px}
+.lead strong{font-family:var(--kyoka-b);font-weight:600;background:linear-gradient(transparent 60%,var(--marker) 60%)}
+
+/* ボタン */
+.btn{border:none;border-radius:12px;padding:10px 22px;font-family:var(--kyoka-b);font-weight:600;font-size:20px;background:var(--accent);color:#fff;min-height:52px}
+.btn.ghost{background:var(--bg);color:var(--ink);border:3px solid var(--line)}
+.btn.big{font-size:24px;padding:12px 32px}
+.btn:disabled{opacity:.4;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.chips{display:flex;gap:6px;background:var(--card);padding:5px;border-radius:12px}
+.chip{border:none;background:transparent;border-radius:9px;padding:6px 14px;font-size:17px}
+.chip[aria-pressed="true"]{background:var(--bg);font-family:var(--kyoka-b);font-weight:600;box-shadow:0 1px 3px rgba(20,30,50,.18)}
+
+/* kanji glyph with the part area colored */
+.shin{width:1em;height:1em;display:inline-block;vertical-align:-.12em}
+.kj{position:relative;display:inline-block;line-height:1;font-family:var(--kyoka)}
+.kj .hl{position:absolute;left:0;top:0;color:var(--part);pointer-events:none}
+
+/* パーツのいち図 */
+.dia{width:100%;height:auto;display:block}
+.dia .frame{fill:var(--bg);stroke:var(--ink);stroke-width:3}
+.dia .reg{fill:var(--part)}
+
+/* ===== くみたてパズル ===== */
+.pz{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:20px;align-items:start}
+@media (max-width:820px){.pz{grid-template-columns:minmax(0,1fr)}}
+.board{border:3px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.build{position:relative;width:200px;height:200px;max-width:100%;border:3px dashed var(--line);border-radius:12px;background:
+  linear-gradient(var(--line),var(--line)) center/2px 100% no-repeat,
+  linear-gradient(var(--line),var(--line)) center/100% 2px no-repeat;}
+.build.done{border-style:solid;border-color:var(--ok);background:var(--ok-soft)}
+.build .pc{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:170px;line-height:1;transition:transform .55s cubic-bezier(.3,1.3,.5,1),opacity .3s}
+.build .pc.bu{color:var(--part)}
+.build .result{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:170px;animation:pop .45s ease-out}
+.build .hint0{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:17px;color:var(--sub);padding:18px;line-height:1.5}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}
+.msg{min-height:3.4em;text-align:center;font-size:20px;line-height:1.5}
+.msg .ok{color:var(--ok);font-family:var(--kyoka-b);font-weight:600}
+.msg .ng{color:var(--ng);font-family:var(--kyoka-b);font-weight:600}
+.yomi{font-size:17px;color:var(--sub)}
+.count{font-family:var(--kyoka-b);font-size:20px;font-variant-numeric:tabular-nums}
+.found{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.slot{width:58px;height:58px;border-radius:10px;border:2px dashed var(--line);display:flex;align-items:center;justify-content:center;font-size:42px;color:var(--line)}
+.slot.got{border:2px solid var(--ok);background:var(--ok-soft);color:var(--ink);animation:pop .4s ease-out}
+.pieces{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:12px}
+.piece{aspect-ratio:1;max-width:100%;border:3px solid transparent;border-radius:16px;background:var(--card);color:var(--card-ink);font-size:64px;line-height:1;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 #c9ced8;transition:transform .12s}
+.piece:active{transform:translateY(2px);box-shadow:0 1px 0 #c9ced8}
+.piece.sel{border-color:var(--accent);background:var(--accent-soft);transform:translateY(-4px);box-shadow:0 6px 0 #b9c8ea}
+.piece.flash{animation:flash 1s ease-in-out 3}
+@keyframes flash{50%{border-color:var(--part);background:var(--part-soft)}}
+.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.pz-side{display:flex;flex-direction:column;gap:14px;min-width:0}
+.clear{display:flex;align-items:center;gap:14px;justify-content:center;font-family:var(--kyoka-b);font-size:24px;font-weight:600;color:var(--part)}
+.clear svg{width:84px;height:84px}
+
+/* ===== なかまあつめ ===== */
+.nk-head{display:flex;gap:18px;align-items:center;flex-wrap:wrap;border:3px solid var(--line);border-radius:18px;padding:14px 18px;margin-bottom:16px}
+.nk-g{font-size:84px;line-height:1;color:var(--part);width:100px;text-align:center}
+.nk-dia{width:76px}
+.nk-t{flex:1;min-width:200px}
+.nk-t .nm{font-family:var(--kyoka-b);font-weight:600;font-size:30px}
+.nk-t .rest{font-size:19px;color:var(--sub)}
+.grid9{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:480px;margin:0 auto}
+.kbtn{aspect-ratio:1.45;border:3px solid var(--line);border-radius:16px;background:var(--bg);font-size:58px;line-height:1;display:flex;align-items:center;justify-content:center;position:relative}
+.kbtn.ok{border-color:var(--ok);background:var(--ok-soft)}
+.kbtn.ok::after,.kbtn.ng::after{position:absolute;right:8px;top:4px;font-size:26px;font-family:var(--kyoka-b)}
+.kbtn.ok::after{content:"○";color:var(--ok)}
+.kbtn.ng{border-color:var(--ng);background:var(--ng-soft)}
+.kbtn.ng::after{content:"×";color:var(--ng)}
+.center{text-align:center}
+
+/* ===== どこかなクイズ ===== */
+.dk{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.4fr);gap:22px;align-items:start}
+@media (max-width:820px){.dk{grid-template-columns:minmax(0,1fr)}}
+.dk-q{border:3px solid var(--line);border-radius:18px;padding:16px;text-align:center}
+.dk-no{font-family:var(--kyoka-b);font-size:19px;color:var(--sub);font-variant-numeric:tabular-nums}
+.dk-k{font-size:180px;line-height:1.05;margin-block:6px}
+.opts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:520px){.opts{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.opt{border:3px solid var(--line);border-radius:14px;background:var(--bg);padding:10px 8px 6px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.opt .dia{width:70%}
+.opt b{font-family:var(--kyoka-b);font-weight:600;font-size:22px}
+.opt small{font-size:14px;color:var(--sub);line-height:1.2}
+.opt.ok{border-color:var(--ok);background:var(--ok-soft)}
+.opt.ng{border-color:var(--ng);background:var(--ng-soft)}
+.opt:disabled{cursor:default}
+.dk-ans{margin-top:14px;min-height:4em;font-size:20px;line-height:1.6}
+.score{font-family:var(--kyoka-b);font-size:34px;font-weight:600}
+
+/* ===== パーツずかん ===== */
+.zk-cats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.zk-cat{border:3px solid var(--line);background:var(--bg);border-radius:12px;padding:6px 10px;display:flex;align-items:center;gap:8px;font-family:var(--kyoka-b);font-weight:600;font-size:20px}
+.zk-cat .dia{width:30px}
+.zk-cat[aria-pressed="true"]{border-color:var(--ink)}
+.zk-about{display:flex;gap:16px;align-items:center;margin-bottom:16px}
+.zk-about .dia{width:90px;flex:none}
+.zk-about p{margin:0;font-size:22px}
+.zk-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.zk-b{border:3px solid var(--line);border-radius:16px;padding:12px 14px;min-width:0}
+.zk-b h3{margin:0 0 6px;display:flex;align-items:center;gap:12px;font-family:var(--kyoka-b);font-weight:600;font-size:24px}
+.zk-b h3 .g{font-size:52px;line-height:1;color:var(--part);font-family:var(--kyoka)}
+.zk-ex{display:flex;flex-wrap:wrap;gap:6px}
+.zk-ex figure{margin:0;display:flex;flex-direction:column;align-items:center;width:62px}
+.zk-ex .kj{font-size:50px}
+.zk-ex figcaption{font-size:13px;color:var(--sub);line-height:1.3;text-align:center}
+
+.foot{margin-top:36px;font-size:14px;color:var(--sub);border-top:1px solid var(--line);padding-top:10px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header class="top">
+    <h1><span class="mk">漢字パーツパズル</span></h1>
+    <span class="sp"></span>
+    <div class="stars" aria-label="あつめた ほし"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6 6.6.8-4.9 4.5 1.3 6.5L12 17l-5.9 3.3 1.3-6.5L2.5 9.3l6.6-.8z" fill="#f5b800" stroke="#c98f00" stroke-width="1"/></svg><b id="stars">0</b></div>
+    <button class="snd" id="snd" aria-pressed="true">おと あり</button>
+  </header>
+
+  <nav class="tabs" role="tablist">
+    <button class="tab" role="tab" data-mode="puzzle" id="t-puzzle"><b>くみたてパズル</b><small>パーツで 漢字を 作る</small></button>
+    <button class="tab" role="tab" data-mode="nakama" id="t-nakama"><b>なかまあつめ</b><small>同じ パーツを さがす</small></button>
+    <button class="tab" role="tab" data-mode="doko" id="t-doko"><b>どこかなクイズ</b><small>パーツの いちは？</small></button>
+    <button class="tab" role="tab" data-mode="zukan" id="t-zukan"><b>パーツずかん</b><small>へん・つくり など</small></button>
+  </nav>
+
+  <!-- くみたてパズル -->
+  <section id="m-puzzle" hidden>
+    <p class="lead">パーツを <strong>2つ</strong> えらんで、漢字を 作ろう。</p>
+    <div class="pz">
+      <div class="board">
+        <div class="build" id="pBuild"></div>
+        <div class="msg" id="pMsg"></div>
+      </div>
+      <div class="pz-side">
+        <div class="row" style="justify-content:space-between">
+          <span class="count" id="pCount"></span>
+          <div class="chips" role="group" aria-label="パーツの 数">
+            <button class="chip" data-lv="2" aria-pressed="true">すくなめ</button>
+            <button class="chip" data-lv="3" aria-pressed="false">おおめ</button>
+          </div>
+        </div>
+        <div class="found" id="pFound"></div>
+        <div class="pieces" id="pPieces"></div>
+        <div class="row">
+          <button class="btn ghost" id="pHint">ヒント</button>
+          <button class="btn" id="pNext">つぎの もんだい</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- なかまあつめ -->
+  <section id="m-nakama" hidden>
+    <p class="lead">上の パーツが ある 漢字を、<strong>ぜんぶ</strong> 見つけよう。</p>
+    <div class="nk-head" id="nHead"></div>
+    <div class="grid9" id="nGrid"></div>
+    <div class="msg" id="nMsg" style="margin-top:12px"></div>
+    <div class="center"><button class="btn" id="nNext">つぎの もんだい</button></div>
+  </section>
+
+  <!-- どこかなクイズ -->
+  <section id="m-doko" hidden>
+    <p class="lead">この 漢字の パーツは、<strong>どの いち</strong>に ある かな？</p>
+    <div class="dk" id="dBody"></div>
+  </section>
+
+  <!-- パーツずかん -->
+  <section id="m-zukan" hidden>
+    <p class="lead">パーツの <strong>いち</strong>と <strong>名前</strong>を たしかめよう。</p>
+    <div class="zk-cats" id="zCats"></div>
+    <div class="zk-about" id="zAbout"></div>
+    <div class="zk-list" id="zList"></div>
+  </section>
+
+  <p class="foot">つかっている 漢字は、3年生までに ならう 漢字です。けっかは ほぞんしません。</p>
+</div>
+
+<script>
+/* ---------- データ ---------- */
+const CAT = {
+  hen:     {n:'へん',     d:'漢字の 左がわに ある パーツ'},
+  tsukuri: {n:'つくり',   d:'漢字の 右がわに ある パーツ'},
+  kanmuri: {n:'かんむり', d:'漢字の 上に ある パーツ'},
+  ashi:    {n:'あし',     d:'漢字の 下に ある パーツ'},
+  nyou:    {n:'にょう',   d:'左から 下へ のびる パーツ'},
+  tare:    {n:'たれ',     d:'上から 左へ たれる パーツ'},
+  kamae:   {n:'かまえ',   d:'まわりを かこむ パーツ'}
+};
+const CAT_ORDER = ['hen','tsukuri','kanmuri','ashi','nyou','tare','kamae'];
+
+/* [いち, パーツ, 名前, 漢字リスト, 色をつける はんい]
+   漢字リスト：「漢字＋もう1つのパーツ＋読み」。もう1つのパーツが「・」の字は パズルに 出さない */
+const RAW = [
+  ['hen','亻','にんべん','休木やすむ 体本からだ 住主すむ 他也ほか 作・つくる 使・つかう 係・かかり 代・かわる',32],
+  ['hen','氵','さんずい','池也いけ 海毎うみ 泳永およぐ 洋羊よう 油由あぶら 注主そそぐ 決・きめる 湖・みずうみ 港・みなと 湯・ゆ 流・ながれる 消・けす 深・ふかい 波・なみ',32],
+  ['hen','木','きへん','林木はやし 村寸むら 校交こう 柱主はしら 板反いた 植直うえる 横黄よこ 根・ね 橋・はし',44],
+  ['hen','糸','いとへん','紙氏かみ 組且くむ 絵会え 線泉せん 終冬おわる 細田ほそい 級・きゅう 緑・みどり 練・ねる',42],
+  ['hen','言','ごんべん','話舌はなす 語吾かたる 読売よむ 記己き 計十はかる 詩寺し 調・しらべる 談・だん',40],
+  ['hen','扌','てへん','打丁うつ 拾合ひろう 持寺もつ 指旨ゆび 投・なげる',34],
+  ['hen','日','ひへん','明月あかるい 晴青はれる 時寺とき 暗音くらい 曜・よう',34],
+  ['hen','彳','ぎょうにんべん','待寺まつ 役・やく 後・うしろ',34],
+  ['hen','土','つちへん','地也ち 坂反さか 場・ば',38],
+  ['hen','金','かねへん','鉄失てつ 銀艮ぎん',42],
+  ['hen','女','おんなへん','姉市あね 妹未いもうと 始台はじめる',44],
+  ['hen','阝','こざとへん','院完いん 陽・よう 階・かい',32],
+  ['hen','禾','のぎへん','秋火あき 科斗か 秒少びょう',44],
+  ['hen','礻','しめすへん','神申かみ 福・ふく 礼・れい',36],
+  ['hen','口','くちへん','味未あじ',32],
+  ['hen','石','いしへん','研开けん',42],
+  ['hen','王','おうへん','球求きゅう',38],
+  ['hen','飠','しょくへん','飲欠のむ',42],
+  ['hen','馬','うまへん','駅尺えき',46],
+  ['tsukuri','頁','おおがい','頭豆あたま 題是だい 顔・かお',50],
+  ['tsukuri','力','ちから','助且たすける 動重うごく 勉免べん',54],
+  ['tsukuri','攵','のぶん','放方はなす 数・かず 教・おしえる 整・せい',52],
+  ['tsukuri','阝','おおざと','都者と 部・ぶ',64],
+  ['tsukuri','欠','あくび','歌哥うた 次・つぎ',52],
+  ['tsukuri','刂','りっとう','列歹れつ',66],
+  ['tsukuri','彡','さんづくり','形开かたち',62],
+  ['tsukuri','斤','おのづくり','新・あたらしい',54],
+  ['kanmuri','艹','くさかんむり','草早くさ 花化はな 荷何に 苦古くるしい 薬楽くすり 茶・ちゃ 葉・は 落・おちる',30],
+  ['kanmuri','宀','うかんむり','安女やすい 室至しつ 宮呂みや 客各きゃく 守寸まもる 家・いえ 実・み 定・さだめる 宿・やど 寒・さむい',30],
+  ['kanmuri','竹','たけかんむり','答合こたえ 笛由ふえ 箱相はこ 等寺とう 筆聿ふで 第・だい',36],
+  ['kanmuri','雨','あめかんむり','雪彐ゆき 雲云くも 電・でん',42],
+  ['kanmuri','穴','あなかんむり','空工そら 究九きゅう',38],
+  ['kanmuri','癶','はつがしら','登豆のぼる 発・はつ',40],
+  ['kanmuri','人','ひとやね','会云あう 今・いま',38],
+  ['ashi','心','こころ','思田おもう 意音い 想相そう 息自いき 悲非かなしい 悪・わるい 感・かん',64],
+  ['ashi','灬','れんが','点占てん',76],
+  ['ashi','儿','ひとあし','兄口あに 元二もと 先・さき 光・ひかり',56],
+  ['nyou','辶','しんにょう','近斤ちかい 返反かえす 速束はやい 週周しゅう 道首みち 進隹すすむ 通・とおる 遠・とおい 送・おくる 追・おう 遊・あそぶ 運・はこぶ',[32,74]],
+  ['nyou','走','そうにょう','起己おきる',[44,72]],
+  ['tare','广','まだれ','店占みせ 広ムひろい 庫車こ 庭廷にわ 度・ど',[30,28]],
+  ['tare','疒','やまいだれ','病丙びょう',[30,32]],
+  ['tare','厂','がんだれ','原泉はら',[26,24]],
+  ['tare','尸','しかばね','屋至や 局・きょく',[34,30]],
+  ['kamae','囗','くにがまえ','国玉くに 回口かい 園袁えん 図・ず',[18,18,82,82]],
+  ['kamae','門','もんがまえ','間日あいだ 聞耳きく 開开ひらく',[27,30,73,100]]
+];
+
+const BUSHU = RAW.map(([c,g,n,s,w],i)=>{
+  const b = {i,c,g,n,w,list:[]};
+  b.list = s.split(' ').map(t=>({k:t[0], o:t[1]==='・'?null:t[1], y:t.slice(2), b}));
+  return b;
+});
+const ALL = BUSHU.flatMap(b=>b.list);
+const k2 = (a,b)=>[a,b].sort().join('');
+const COMBO = {};
+ALL.forEach(e=>{ if(e.o){ const key=k2(e.b.g,e.o); if(COMBO[key]) console.warn('かぶり',key); COMBO[key]=e; } });
+
+/* ---------- ちいさな どうぐ ---------- */
+const $ = s=>document.querySelector(s);
+const shuffle = a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const pick = a=>a[Math.floor(Math.random()*a.length)];
+
+const REGION = {
+  hen:'M0 0H42V100H0Z', tsukuri:'M58 0H100V100H58Z', kanmuri:'M0 0H100V38H0Z', ashi:'M0 62H100V100H0Z',
+  nyou:'M0 0H32V68H100V100H0Z', tare:'M0 0H100V32H32V100H0Z', kamae:'M0 0H100V100H0Z M24 24V76H76V24Z'
+};
+function diagram(cat){
+  return `<svg class="dia" viewBox="-3 -3 106 106" aria-hidden="true"><rect class="frame" x="0" y="0" width="100" height="100"/><path class="reg" fill-rule="evenodd" d="${REGION[cat]}"/><rect x="0" y="0" width="100" height="100" fill="none" stroke="var(--ink)" stroke-width="3"/></svg>`;
+}
+function clipFor(b){
+  const w=b.w;
+  switch(b.c){
+    case 'hen':     return `polygon(0 0,${w}% 0,${w}% 100%,0 100%)`;
+    case 'tsukuri': return `polygon(${w}% 0,100% 0,100% 100%,${w}% 100%)`;
+    case 'kanmuri': return `polygon(0 0,100% 0,100% ${w}%,0 ${w}%)`;
+    case 'ashi':    return `polygon(0 ${w}%,100% ${w}%,100% 100%,0 100%)`;
+    case 'nyou':    return `polygon(0 0,${w[0]}% 0,${w[0]}% ${w[1]}%,100% ${w[1]}%,100% 100%,0 100%)`;
+    case 'tare':    return `polygon(0 0,100% 0,100% ${w[1]}%,${w[0]}% ${w[1]}%,${w[0]}% 100%,0 100%)`;
+    case 'kamae':   return `polygon(evenodd,0 0,100% 0,100% 100%,0 100%,0 0,${w[0]}% ${w[1]}%,${w[0]}% ${w[3]}%,${w[2]}% ${w[3]}%,${w[2]}% ${w[1]}%,${w[0]}% ${w[1]}%)`;
+  }
+}
+/* 漢字を書き、color only the part area */
+function kj(e,show=true){
+  return `<span class="kj">${e.k}${show?`<span class="hl" style="clip-path:${clipFor(e.b)};-webkit-clip-path:${clipFor(e.b)}">${e.k}</span>`:''}</span>`;
+}
+/* しんにょうは 字体によって 点が2つに なるので、点1つの形を 図で かく */
+const SHIN='<svg class="shin" viewBox="0 0 100 100" aria-label="しんにょう" role="img"><g fill="none" stroke="currentColor" stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 13 L29 25"/><path d="M10 41 H33 L17 62"/><path d="M24 56 V76 Q26 88 44 88 Q70 88 95 91"/></g></svg>';
+const G = g=> g==='辶' ? SHIN : g;
+const partName = b=>`「${G(b.g)}」（${b.n}）`;
+
+/* おと */
+let AC=null, soundOn=true;
+function tone(list,type='sine'){
+  if(!soundOn) return;
+  try{
+    AC = AC || new (window.AudioContext||window.webkitAudioContext)();
+    const t=AC.currentTime;
+    list.forEach((f,i)=>{
+      const o=AC.createOscillator(), g=AC.createGain(), s=t+i*.1;
+      o.type=type; o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,s); g.gain.exponentialRampToValueAtTime(.18,s+.02); g.gain.exponentialRampToValueAtTime(.0001,s+.28);
+      o.connect(g).connect(AC.destination); o.start(s); o.stop(s+.3);
+    });
+  }catch(err){}
+}
+const SND = {ok:()=>tone([660,990]), ng:()=>tone([240,200],'triangle'), clear:()=>tone([523,659,784,1047]), tap:()=>tone([520])};
+$('#snd').onclick = e=>{ soundOn=!soundOn; e.currentTarget.setAttribute('aria-pressed',soundOn); e.currentTarget.textContent = soundOn?'おと あり':'おと なし'; };
+
+let stars=0;
+const addStar = (n=1)=>{ stars+=n; $('#stars').textContent=stars; };
+
+function hanamaru(){
+  let petals='';
+  for(let i=0;i<8;i++){const a=i*Math.PI/4; petals+=`<circle cx="${(60+40*Math.cos(a)).toFixed(1)}" cy="${(60+40*Math.sin(a)).toFixed(1)}" r="17"/>`;}
+  return `<svg viewBox="0 0 120 120" aria-hidden="true"><g fill="none" stroke="var(--part)" stroke-width="5" stroke-linecap="round">${petals}<circle cx="60" cy="60" r="26"/><path d="M60 47a13 13 0 1 1 -12 8"/></g></svg>`;
+}
+
+/* ---------- くみたてパズル ---------- */
+const P = {cards:[], targets:[], found:new Set(), sel:-1, busy:false, lv:2};
+const LAYOUT = {
+  hen:    ['left center','scale(.46,1)','right center','scale(.6,1)'],
+  tsukuri:['right center','scale(.5,1)','left center','scale(.56,1)'],
+  kanmuri:['center top','scale(1,.42)','center bottom','scale(1,.62)'],
+  ashi:   ['center bottom','scale(1,.42)','center top','scale(1,.62)'],
+  nyou:   ['center','scale(1,1)','right top','scale(.66,.7)'],
+  tare:   ['center','scale(1,1)','right bottom','scale(.68,.7)'],
+  kamae:  ['center','scale(1,1)','center 70%','scale(.5,.5)']
+};
+function newPuzzle(){
+  const pool = shuffle(BUSHU.filter(b=>b.list.some(e=>e.o)));
+  const chosen = [];
+  // first part: one that makes 3+ kanji
+  chosen.push(pool.find(b=>b.list.filter(e=>e.o).length>=3));
+  for(const b of pool){ if(chosen.length>=P.lv) break; if(!chosen.includes(b) && b.g!==chosen[0].g && b.list.filter(e=>e.o).length>=2) chosen.push(b); }
+  const per = P.lv===2 ? 3 : 2;
+  const cards = [];
+  chosen.forEach(b=>{
+    if(!cards.includes(b.g)) cards.push(b.g);
+    shuffle(b.list.filter(e=>e.o)).slice(0,per).forEach(e=>{
+      if(e.o===b.g) cards.push(e.o); else if(!cards.includes(e.o)) cards.push(e.o);
+    });
+  });
+  const t = new Map();
+  for(let i=0;i<cards.length;i++) for(let j=i+1;j<cards.length;j++){
+    const e = COMBO[k2(cards[i],cards[j])]; if(e) t.set(e.k,e);
+  }
+  P.cards = shuffle(cards); P.targets=[...t.values()]; P.found=new Set(); P.sel=-1; P.busy=false;
+  $('#pBuild').className='build';
+  $('#pBuild').innerHTML='<div class="hint0">下の カードを 2まい えらぶと、ここで くっつくよ</div>';
+  $('#pMsg').innerHTML='';
+  renderPuzzle();
+}
+function renderPuzzle(){
+  $('#pCount').textContent = `見つけた 漢字　${P.found.size} ／ ${P.targets.length}`;
+  $('#pFound').innerHTML = P.targets.map(e=>P.found.has(e.k)?`<div class="slot got">${e.k}</div>`:`<div class="slot">？</div>`).join('');
+  $('#pPieces').innerHTML = P.cards.map((g,i)=>`<button class="piece${P.sel===i?' sel':''}" data-i="${i}" aria-label="パーツ ${g}">${G(g)}</button>`).join('');
+  $('#pPieces').querySelectorAll('.piece').forEach(el=>el.onclick=()=>tapPiece(+el.dataset.i));
+}
+function tapPiece(i){
+  if(P.busy) return;
+  if(P.sel===-1){
+    P.sel=i; SND.tap();
+    $('#pBuild').className='build';
+    $('#pBuild').innerHTML=`<div class="pc" style="transform:scale(.7)">${G(P.cards[i])}</div>`;
+    $('#pMsg').innerHTML='もう 1まい えらぼう';
+    renderPuzzle(); return;
+  }
+  if(P.sel===i){ P.sel=-1; $('#pBuild').innerHTML=''; $('#pMsg').innerHTML=''; renderPuzzle(); return; }
+  const a=P.cards[P.sel], b=P.cards[i], e=COMBO[k2(a,b)];
+  const ia=P.sel; P.sel=-1;
+  if(!e){
+    SND.ng();
+    $('#pMsg').innerHTML=`<span class="ng">「${G(a)}」と「${G(b)}」では 作れないよ</span><br>ほかの くみあわせを ためそう`;
+    renderPuzzle();
+    [ia,i].forEach(x=>{const el=$('#pPieces').children[x]; el.classList.add('shake'); setTimeout(()=>el.classList.remove('shake'),450);});
+    $('#pBuild').innerHTML='';
+    return;
+  }
+  assemble(e);
+}
+function assemble(e){
+  P.busy=true; renderPuzzle();
+  const L=LAYOUT[e.b.c], box=$('#pBuild');
+  box.className='build';
+  box.innerHTML=`<div class="pc bu" style="transform-origin:${L[0]};transform:scale(.7)">${G(e.b.g)}</div><div class="pc" style="transform-origin:${L[2]};transform:scale(.7);opacity:.9">${e.o}</div>`;
+  const [p1,p2]=box.children;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{ p1.style.transform=L[1]; p2.style.transform=L[3]; }));
+  setTimeout(()=>{
+    const again = P.found.has(e.k);
+    box.className='build done';
+    box.innerHTML=`<div class="result">${kj(e)}</div>`;
+    if(again){
+      $('#pMsg').innerHTML=`「${e.k}」は もう 見つけたよ。<br><span class="yomi">${partName(e.b)} ＋「${e.o}」</span>`;
+    }else{
+      P.found.add(e.k); SND.ok(); addStar();
+      $('#pMsg').innerHTML=`<span class="ok">できた！「${e.k}」（${e.y}）</span><br><span class="yomi">${partName(e.b)}は ${CAT[e.b.c].n}</span>`;
+    }
+    P.busy=false; renderPuzzle();
+    if(!again && P.found.size===P.targets.length){
+      setTimeout(()=>{ SND.clear(); addStar(2);
+        $('#pMsg').innerHTML=`<div class="clear">${hanamaru()}<span>ぜんぶ 見つけた！</span></div>`;
+      },700);
+    }
+  },800);
+}
+function hintPuzzle(){
+  const rest = P.targets.filter(e=>!P.found.has(e.k));
+  if(!rest.length) return;
+  const e = pick(rest);
+  const idx = P.cards.indexOf(e.b.g);
+  const el = $('#pPieces').children[idx];
+  if(el){ el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); }
+  $('#pMsg').innerHTML=`ひかった カード ${partName(e.b)}を つかうと、<br>まだ 見つけていない 漢字が 作れるよ`;
+}
+$('#pHint').onclick=hintPuzzle;
+$('#pNext').onclick=newPuzzle;
+document.querySelectorAll('[data-lv]').forEach(b=>b.onclick=()=>{
+  P.lv=+b.dataset.lv;
+  document.querySelectorAll('[data-lv]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+  newPuzzle();
+});
+
+/* ---------- なかまあつめ ---------- */
+const N = {b:null, items:[], left:0, last:null};
+function newNakama(){
+  const pool = BUSHU.filter(b=>b.list.length>=3 && b!==N.last);
+  const b = pick(pool); N.b=b; N.last=b;
+  const right = shuffle(b.list).slice(0,Math.min(4,b.list.length));
+  const wrong = shuffle(ALL.filter(e=>e.b!==b && e.b.g!==b.g && e.o!==b.g && e.k!==b.g)).slice(0,9-right.length);
+  N.items = shuffle([...right.map(e=>({e,ok:true})),...wrong.map(e=>({e,ok:false}))]);
+  N.left = right.length;
+  $('#nHead').innerHTML = `<div class="nk-g">${G(b.g)}</div><div class="nk-dia">${diagram(b.c)}</div>
+    <div class="nk-t"><div class="nm">${b.n}</div><div class="rest" id="nRest"></div></div>`;
+  $('#nGrid').innerHTML = N.items.map((it,i)=>`<button class="kbtn" data-i="${i}">${it.e.k}</button>`).join('');
+  $('#nGrid').querySelectorAll('.kbtn').forEach(el=>el.onclick=()=>tapNakama(el,+el.dataset.i));
+  $('#nMsg').innerHTML=''; restNakama();
+}
+function restNakama(){ $('#nRest').textContent = N.left? `${CAT[N.b.c].n}の なかま。のこり ${N.left}こ` : `${CAT[N.b.c].n}の なかま。ぜんぶ 見つけた！`; }
+function tapNakama(el,i){
+  const it=N.items[i];
+  if(el.classList.contains('ok')||el.classList.contains('ng')) return;
+  if(it.ok){
+    el.classList.add('ok'); el.innerHTML=kj(it.e); N.left--; SND.ok(); addStar(); restNakama();
+    $('#nMsg').innerHTML=`<span class="ok">せいかい！「${it.e.k}」（${it.e.y}）</span>`;
+    if(!N.left){ setTimeout(()=>{SND.clear(); addStar(2); $('#nMsg').innerHTML=`<div class="clear">${hanamaru()}<span>ぜんぶ 見つけた！</span></div>`;},500); }
+  }else{
+    el.classList.add('ng','shake'); SND.ng();
+    $('#nMsg').innerHTML=`<span class="ng">ざんねん。</span>「${it.e.k}」は ${partName(it.e.b)}の なかまだよ`;
+  }
+}
+$('#nNext').onclick=newNakama;
+
+/* ---------- どこかなクイズ ---------- */
+const D = {qs:[], n:0, score:0, answered:false};
+function newDoko(){
+  const qs=[]; const used=new Set();
+  const cats = shuffle(CAT_ORDER).concat(shuffle(CAT_ORDER)).slice(0,10);
+  cats.forEach(c=>{ const e=pick(ALL.filter(x=>x.b.c===c && !used.has(x.k))); used.add(e.k); qs.push(e); });
+  D.qs=shuffle(qs); D.n=0; D.score=0; renderDoko();
+}
+function renderDoko(){
+  const e=D.qs[D.n]; D.answered=false;
+  $('#dBody').innerHTML = `<div class="dk-q">
+      <div class="dk-no">${D.n+1} もんめ ／ 10もん</div>
+      <div class="dk-k" id="dK">${e.k}</div>
+      <div class="yomi">${e.y}</div>
+      <div class="dk-ans" id="dAns"></div>
+    </div>
+    <div><div class="opts">${CAT_ORDER.map(c=>`<button class="opt" data-c="${c}">${diagram(c)}<b>${CAT[c].n}</b></button>`).join('')}</div></div>`;
+  $('#dBody').querySelectorAll('.opt').forEach(el=>el.onclick=()=>answerDoko(el));
+}
+function answerDoko(el){
+  if(D.answered) return; D.answered=true;
+  const e=D.qs[D.n], ok = el.dataset.c===e.b.c;
+  $('#dBody').querySelectorAll('.opt').forEach(o=>{ o.disabled=true; if(o.dataset.c===e.b.c) o.classList.add('ok'); });
+  if(!ok) el.classList.add('ng');
+  if(ok){ D.score++; SND.ok(); addStar(); } else SND.ng();
+  $('#dK').innerHTML = kj(e);
+  const last = D.n===D.qs.length-1;
+  $('#dAns').innerHTML = `${ok?'<span class="ok" style="color:var(--ok);font-family:var(--kyoka-b)">せいかい！</span>':'<span style="color:var(--ng);font-family:var(--kyoka-b)">おしい！</span>'}<br>
+    パーツは ${partName(e.b)}。<b>${CAT[e.b.c].n}</b>だね。<br>
+    <button class="btn" id="dNext" style="margin-top:10px">${last?'けっかを 見る':'つぎの もんだい'}</button>`;
+  $('#dNext').onclick = ()=>{ if(last) resultDoko(); else { D.n++; renderDoko(); } };
+  $('#dNext').focus({preventScroll:true});
+}
+function resultDoko(){
+  const good = D.score>=8;
+  if(good){ SND.clear(); addStar(2); }
+  $('#dBody').innerHTML = `<div class="dk-q" style="grid-column:1/-1">
+     ${good?`<div class="clear">${hanamaru()}</div>`:''}
+     <div class="score">10もん中　${D.score}もん せいかい</div>
+     <p>${good?'すばらしい！ パーツの いちが よく わかって いるね。':'「パーツずかん」で いちを たしかめてから、もう いちど ちょうせん しよう。'}</p>
+     <button class="btn big" id="dAgain">もう いちど</button></div>`;
+  $('#dAgain').onclick=newDoko;
+}
+
+/* ---------- パーツずかん ---------- */
+let zCat='hen';
+function renderZukan(){
+  $('#zCats').innerHTML = CAT_ORDER.map(c=>`<button class="zk-cat" data-c="${c}" aria-pressed="${c===zCat}">${diagram(c)}${CAT[c].n}</button>`).join('');
+  $('#zCats').querySelectorAll('.zk-cat').forEach(el=>el.onclick=()=>{zCat=el.dataset.c; renderZukan();});
+  $('#zAbout').innerHTML = `${diagram(zCat)}<p><b style="font-family:var(--kyoka-b);font-size:28px">${CAT[zCat].n}</b><br>${CAT[zCat].d}</p>`;
+  $('#zList').innerHTML = BUSHU.filter(b=>b.c===zCat).map(b=>`<article class="zk-b">
+      <h3><span class="g">${G(b.g)}</span>${b.n}</h3>
+      <div class="zk-ex">${b.list.map(e=>`<figure>${kj(e)}<figcaption>${e.y}</figcaption></figure>`).join('')}</div>
+    </article>`).join('');
+}
+
+/* ---------- きりかえ ---------- */
+const MODES=['puzzle','nakama','doko','zukan'];
+const started={};
+function show(m){
+  MODES.forEach(x=>{ $('#m-'+x).hidden = x!==m; $('#t-'+x).setAttribute('aria-selected',x===m); });
+  if(!started[m]){ started[m]=true; ({puzzle:newPuzzle,nakama:newNakama,doko:newDoko,zukan:renderZukan})[m](); }
+  try{ history.replaceState(null,'','#'+m); }catch(err){}
+}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>show(t.dataset.mode));
+const h=(location.hash||'').slice(1);
+show(MODES.includes(h)?h:'puzzle');
+</script>
+
+</body>
+</html>
